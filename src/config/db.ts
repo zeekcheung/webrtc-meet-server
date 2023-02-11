@@ -18,8 +18,8 @@ const DbConfigModule = TypeOrmModule.forRootAsync({
     username: configService.get<string>('DATABASE_USERNAME'),
     password: configService.get<string>('DATABASE_PASSWORD'),
     database: configService.get<string>('DATABASE_DATABASE'),
-    // 需要连接的实体
-    entities: [],
+    // 自动加载实体
+    autoLoadEntities: true,
     // 开发环境下开启数据库同步
     synchronize: isDev(),
     // 连接失败时重新连接的次数
