@@ -14,26 +14,21 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [14.x, 16.x, 18.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
     steps:
     - uses: actions/checkout@v3
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - name: Install pnpm
-      run: npm i pnpm
+    
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2.2.4
+
     - name: Install Dependency
       run: pnpm install
+      
     - name: Test
       run: pnpm run test
+      
     - name: Build
       run: pnpm run build
+      
     - name: Deploy
       uses: easingthemes/ssh-deploy@v4.0.5
       with:
