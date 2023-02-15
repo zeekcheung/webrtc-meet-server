@@ -26,12 +26,14 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+    - name: Install pnpm
+      run: npm i pnpm
     - name: Install Dependency
-      run: npm install
+      run: pnpm install
     - name: Test
-      run: npm run test
+      run: pnpm run test
     - name: Build
-      run: npm run build
+      run: pnpm run build
     - name: Deploy
       uses: easingthemes/ssh-deploy@v4.0.5
       with:
