@@ -12,7 +12,9 @@ import { AppModule } from './modules/app/app.module';
 const RedisStore = require('connect-redis')(session);
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'debug'],
+  });
 
   // 获取环境变量
   const configService = app.get(ConfigService);

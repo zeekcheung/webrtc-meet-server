@@ -2,7 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { encryptText } from 'src/utils/crypto';
+import { getDatetime } from 'src/utils/date';
 import { Repository } from 'typeorm';
+import { RegisterDto } from './dto/register.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 
@@ -16,6 +18,8 @@ export class UsersService {
   async findOne(username: User['username']) {
     const user = await this.userRepository.findOne({
       where: { username },
+      // 查找关系
+      relations: ['chaired_meetings', 'attended_meetings'],
     });
     return user;
   }
@@ -27,20 +31,21 @@ export class UsersService {
 
   findAll({ offset, limit }: PaginationQueryDto) {
     return this.userRepository.find({
-      // relations: ['flavors'],
+      relations: ['chaired_meetings', 'attended_meetings'],
       // 分页查询
       skip: offset, // 跳过 offset 个记录
       take: limit, // 获取 limit 个记录
     });
   }
 
-  async create(createUserDto: User) {
+  async create(createUserDto: RegisterDto) {
     // 对密码进行加密处理
     const encryptedPassword = encryptText(createUserDto.password);
-    // console.log(encryptedPassword);
-    // console.log(decryptText(encryptedPassword));
     const user = this.userRepository.create({
       ...createUserDto,
+      register_time: getDatetime(),
+      chaired_meetings: [],
+      attended_meetings: [],
       password: encryptedPassword,
     });
     return this.userRepository.save(user);

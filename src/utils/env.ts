@@ -14,7 +14,8 @@ export interface IEnvVariables {
   DATABASE_DATABASE: string;
 }
 
-export const NODE_ENV = process.env.NODE_ENV as IEnvVariables['NODE_ENV'];
+export const NODE_ENV = (process.env.NODE_ENV ||
+  'prod') as IEnvVariables['NODE_ENV'];
 
 export const isDev = () => NODE_ENV === 'dev';
 export const isProd = () => NODE_ENV === 'prod';

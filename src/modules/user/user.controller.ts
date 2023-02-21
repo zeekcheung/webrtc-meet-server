@@ -9,15 +9,15 @@ import {
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { USER_BASE_URL } from 'src/common/constant';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { decryptText } from 'src/utils/crypto';
-import { getDatetime } from 'src/utils/date';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { UsersService } from './users.service';
+import { UsersService } from './user.service';
 
 @Controller(USER_BASE_URL)
 export class UsersController {
@@ -31,32 +31,43 @@ export class UsersController {
       throw new BadRequestException(`User ${body.username} already exists!`);
     }
     // 写入数据库
-    return await this.usersService.create({
-      ...body,
-      register_time: getDatetime(),
-    });
+    return await this.usersService.create(body);
   }
 
   // POST /api/user/login
   @Post('login')
-  async login(@Body() body: LoginDto, @Req() req: Request) {
+  async login(
+    @Body() { username, password }: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     // 判断用户是否存在
-    const user = await this.usersService.findOne(body.username);
+    const user = await this.usersService.findOne(username);
     if (user === null) {
-      throw new NotFoundException(`User ${body.username} not found!`);
+      throw new NotFoundException(`User ${username} not found!`);
     }
     // 判断密码是否正确
     const decryptedPassword = decryptText(user.password);
-    if (decryptedPassword !== body.password) {
+    if (password !== decryptedPassword) {
       throw new BadRequestException(`The password is incorrect!`);
     }
+
     /**
      * 将用户数据写入 session（保存在 Redis 中），保存登录状态
      * 当向 session 对象中写入数据时，express-session 中间件就会自动
      * 将 sessionId 通过 set-cookie 字段返回给客户端
+     * 写入数据后，需要手动将 session 保存回 Redis 中，并重新加载 session
      */
     const session = req.session;
-    session[session.id] = user;
+    session[username] = user;
+    session.save(() => {
+      session.reload(() => {
+        // console.log(session);
+      });
+    });
+
+    // 在 cookie 中设置 username
+    res.cookie('username', username);
 
     return user;
   }
@@ -80,10 +91,12 @@ export class UsersController {
   // GET /api/user/profile
   @Get('profile')
   profile(@Req() req: Request) {
-    // 通过 sessionId 从 session 中获取用户信息
+    // 通过 cookie 中的 username 从 session 中获取用户信息
+    const cookies = req.cookies;
     const session = req.session;
-    const sessionId = session.id;
-    return session[sessionId];
+    const username = cookies['username'];
+
+    return session[username];
   }
 
   // Get /api/user?limit=10&offset=20

@@ -11,12 +11,14 @@ import { SESSION_ID_NAME } from 'src/common/constant';
 export function authenticate(req: Request, res: Response, next: NextFunction) {
   // console.log('authenticate middleware works!');
   const { cookies, session } = req;
-  const sessionId = session.id;
+  const sessionId = cookies[SESSION_ID_NAME];
+  const username = cookies['username'];
+
   /**
-   * 判断 cookie 中是否存在 sessionId
-   * 判断 session 中是否存在该 sessionId
+   * 判断 cookie 中是否存在 sessionId 和 username
+   * 判断 session 中是否存在该 username
    */
-  if (cookies[SESSION_ID_NAME] && session[sessionId]) {
+  if (sessionId && username && session[username]) {
     next();
   } else {
     throw new UnauthorizedException(`You haven't logged in yet!`);

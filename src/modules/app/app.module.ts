@@ -3,8 +3,10 @@ import { USER_BASE_URL } from 'src/common/constant';
 import DbConfigModule from 'src/config/db';
 import EnvConfigModule from 'src/config/env';
 import { authenticate } from 'src/middleware/authenticate.middle';
-import { UsersController } from '../user/users.controller';
-import { UserModule } from '../user/users.module';
+import { MeetingModule } from '../meeting/meeting.module';
+import { SignalModule } from '../signal/signal.module';
+import { UsersController } from '../user/user.controller';
+import { UsersModule } from '../user/user.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -14,7 +16,9 @@ import { AppService } from './app.service';
     EnvConfigModule,
     // 连接数据库
     DbConfigModule,
-    UserModule,
+    UsersModule,
+    MeetingModule,
+    SignalModule,
   ],
   controllers: [AppController],
   providers: [AppService],
