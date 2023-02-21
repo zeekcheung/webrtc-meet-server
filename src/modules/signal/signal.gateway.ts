@@ -56,15 +56,12 @@ export class SignalGateway {
   }
 
   /**
-   * 获取 `roomName` 房间内的所有用户
+   * 获取 `roomName` 房间内的所有 `Socket` 实例
    * @param roomName 房间名
-   * @returns `roomName` 房间内的所有用户
+   * @returns `roomName` 房间内的所有 `Socket` 实例
    */
-  private async getUserListByRoomName(roomName: string) {
-    const sockets = await this.server.in(roomName).fetchSockets();
-    return await Promise.all(
-      sockets.map((socket) => this.userService.findOne(socket.data.username)),
-    );
+  private async getSocketsByRoomName(roomName: string) {
+    return await this.server.in(roomName).fetchSockets();
   }
 
   /**
@@ -148,19 +145,14 @@ export class SignalGateway {
       attendees,
     });
 
+    const userList = attendees.map((user) => user.username);
     const updatedMeeting = { ...meeting, attendees };
+    const response = { username, userList, updatedMeeting };
 
     // 通知其他用户有用户加入房间
-    client.to(roomName).emit(
-      'other-join',
-      JSON.stringify({
-        username,
-        room: attendees,
-        updatedMeeting,
-      }),
-    );
+    client.to(roomName).emit('other-join', JSON.stringify(response));
 
-    return JSON.stringify(updatedMeeting);
+    return JSON.stringify(response);
   }
 
   /**
@@ -180,13 +172,14 @@ export class SignalGateway {
     // 离开房间
     client.leave(roomName);
 
-    const response = { username, room: [] };
+    const response = { username, userList: [] };
     /**
      * 如果房间内还有其他用户，则通知其他用户该用户已经离开
      * 如果房间内已经没有其他用户了，Socket.IO 会自动删除该房间
      */
     if (room.size >= 1) {
-      response.room = await this.getUserListByRoomName(roomName);
+      const sockets = await this.getSocketsByRoomName(roomName);
+      response.userList = sockets.map((socket) => socket.data.username);
 
       client.to(roomName).emit('other-leave', JSON.stringify(response));
       return JSON.stringify(response);
@@ -216,7 +209,7 @@ export class SignalGateway {
       .emit('room-closed', JSON.stringify(updatedMeeting));
 
     // 让房间内的所有客户端都离开房间
-    const sockets = await this.server.in(roomName).fetchSockets();
+    const sockets = await this.getSocketsByRoomName(roomName);
     sockets.forEach((socket) => socket.leave(roomName));
 
     // 返回更新后的会议
@@ -234,10 +227,9 @@ export class SignalGateway {
     @MessageBody() { roomName, message }: { roomName: string; message: string },
     @ConnectedSocket() client: ClientSocket,
   ) {
-    const response = {
-      username: client.data.username,
-      message,
-    };
+    const username = client.data.username;
+
+    const response = { username, message };
 
     // 将消息广播给房间内其他用户
     client.to(roomName).emit('receive-message', JSON.stringify(response));
