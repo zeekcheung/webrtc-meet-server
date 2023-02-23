@@ -5,7 +5,6 @@ import EnvConfigModule from 'src/config/env';
 import { authenticate } from 'src/middleware/authenticate.middle';
 import { MeetingModule } from '../meeting/meeting.module';
 import { SignalModule } from '../signal/signal.module';
-import { UsersController } from '../user/user.controller';
 import { UsersModule } from '../user/user.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -32,7 +31,6 @@ export class AppModule implements NestModule {
         `${USER_BASE_URL}/register`,
         `${USER_BASE_URL}/login`,
         `${USER_BASE_URL}/logout`,
-      )
-      .forRoutes(UsersController);
+      );
   }
 }

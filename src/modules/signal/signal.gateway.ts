@@ -6,6 +6,7 @@ import {
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
+import { ORIGIN } from 'src/common/constant';
 import { decryptText } from 'src/utils/crypto';
 import { getDatetime } from 'src/utils/date';
 import { Meeting } from '../meeting/entities/meeting.entity';
@@ -18,7 +19,7 @@ import { ClientSocket, SignalServer } from './types';
    * 配置跨域
    */
   cors: {
-    origin: ['http://localhost:3000', 'https://localhost:3000'],
+    origin: ORIGIN,
     credentials: true,
   },
 })

@@ -6,7 +6,8 @@ import * as cookieParser from 'cookie-parser';
 import { randomUUID } from 'crypto';
 import * as session from 'express-session';
 import { createClient } from 'redis';
-import { SESSION_ID_NAME } from './common/constant';
+import { ORIGIN, SESSION_ID_NAME } from './common/constant';
+import { allowPrivateNetworkMiddleware } from './middleware/allow-private-network.middle';
 import { AppModule } from './modules/app/app.module';
 
 const RedisStore = require('connect-redis')(session);
@@ -23,6 +24,9 @@ async function bootstrap() {
   // 连接 Redis
   const redisClient = createClient({ legacyMode: true });
   redisClient.connect().catch(console.error);
+
+  // 注册 allowPrivateNetworkMiddleware 中间件
+  app.use(allowPrivateNetworkMiddleware);
 
   // 注册 express-session 中间件
   app.use(
@@ -47,7 +51,7 @@ async function bootstrap() {
 
   // 配置跨域
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://localhost:3000'],
+    origin: ORIGIN,
     credentials: true,
   });
 
