@@ -24,8 +24,12 @@ export interface ClientToServerEvents {
     roomName: string,
     acknowledge: (res: string) => void,
   ) => void;
-  ['join-room']: (
+  ['begin-join-room']: (
     body: { roomName: Meeting['id']; password: string },
+    acknowledge: (res: string) => void,
+  ) => void;
+  ['complete-join-room']: (
+    body: { roomName: Meeting['id'] },
     acknowledge: (res: string) => void,
   ) => void;
   ['leave-room']: (
@@ -36,11 +40,17 @@ export interface ClientToServerEvents {
     roomName: string,
     acknowledge: (res: string) => void,
   ) => void;
-  ['send-message']: (
+  ['broadcast-message']: (
     body: { roomName: string; message: unknown },
     acknowledge: (res: string) => void,
   ) => void;
+  ['send-message']: (
+    body: { sid: string; message: Message },
+    acknowledge: (res: string) => void,
+  ) => void;
 }
+
+type Message = { type: RTCSdpType | 'candidate' } & Record<PropertyKey, any>;
 
 /**
  * Socket.IO 的内置事件

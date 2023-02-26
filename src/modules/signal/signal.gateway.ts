@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -44,7 +45,11 @@ export class SignalGateway {
   private getRoomByName(roomName: string): Set<string> {
     // 从主命名空间的内存适配器上获取所有房间
     const rooms = this.server.of('/').adapter.rooms;
-    return rooms.get(roomName);
+    const room = rooms.get(roomName);
+    if (room === undefined) {
+      throw new NotFoundException(`room ${roomName} not fount.`);
+    }
+    return room;
   }
 
   /**
@@ -98,13 +103,13 @@ export class SignalGateway {
   }
 
   /**
-   * 处理客户端加入房间 `io.on('join-room', handleJoinRoom)`
+   * 处理客户端开始加入房间 `io.on('begin-join-room', handleBeginJoinRoom)`
    * @param roomName 客户端加入房间的房间名
    * @param client 与客户端连接的 `Socket` 实例
    * @returns 经过序列化的房间
    */
-  @SubscribeMessage('join-room')
-  async handleJoinRoom(
+  @SubscribeMessage('begin-join-room')
+  async handleBeginJoinRoom(
     @MessageBody()
     { roomName, password }: { roomName: Meeting['id']; password: string },
     @ConnectedSocket() client: ClientSocket,
@@ -138,6 +143,33 @@ export class SignalGateway {
     client.join(roomName);
 
     const username = client.data.username;
+
+    const userList = (await this.getSocketsByRoomName(roomName)).map(
+      (socket) => ({ username: socket.data.username, sid: socket.id }),
+    );
+
+    const response = { username, userList };
+
+    return JSON.stringify(response);
+  }
+
+  /**
+   * 处理客户端完成加入房间 `io.on('complete-join-room', handleCompleteJoinRoom)`
+   * @param roomName 客户端加入房间的房间名
+   * @param client 与客户端连接的 `Socket` 实例
+   * @returns 经过序列化的房间
+   */
+  @SubscribeMessage('complete-join-room')
+  async handleCompleteJoinRoom(
+    @MessageBody()
+    roomName: Meeting['id'],
+    @ConnectedSocket() client: ClientSocket,
+  ) {
+    // meeting.id 作为房间名
+    const meetingId = roomName;
+    const meeting = await this.meetingService.findOne(meetingId);
+
+    const username = client.data.username;
     const user = await this.userService.findOne(username);
     const attendees = [...meeting.attendees, user];
 
@@ -146,7 +178,9 @@ export class SignalGateway {
       attendees,
     });
 
-    const userList = attendees.map((user) => user.username);
+    const userList = (await this.getSocketsByRoomName(roomName)).map(
+      (socket) => ({ username: socket.data.username, sid: socket.id }),
+    );
     const updatedMeeting = { ...meeting, attendees };
     const response = { username, userList, updatedMeeting };
 
@@ -180,7 +214,10 @@ export class SignalGateway {
      */
     if (room.size >= 1) {
       const sockets = await this.getSocketsByRoomName(roomName);
-      response.userList = sockets.map((socket) => socket.data.username);
+      response.userList = sockets.map((socket) => ({
+        username: socket.data.username,
+        sid: socket.id,
+      }));
 
       client.to(roomName).emit('other-leave', JSON.stringify(response));
       return JSON.stringify(response);
@@ -218,13 +255,13 @@ export class SignalGateway {
   }
 
   /**
-   * 处理客户端发送消息 `io.on('send-message', handleMessage)`
-   * @param message 客户端发送的消息
+   * 处理客户端广播消息 `io.on('broadcast-message', handleBroadcastMessage)`
+   * @param message 客户端广播的消息
    * @param client 与客户端连接的 `Socket` 实例
    * @returns
    */
   @SubscribeMessage('send-message')
-  handleMessage(
+  handleBroadcastMessage(
     @MessageBody() { roomName, message }: { roomName: string; message: string },
     @ConnectedSocket() client: ClientSocket,
   ) {
@@ -234,6 +271,27 @@ export class SignalGateway {
 
     // 将消息广播给房间内其他用户
     client.to(roomName).emit('receive-message', JSON.stringify(response));
+
+    return JSON.stringify(response);
+  }
+
+  /**
+   * 处理客户端发送消息 `io.on('send-message', handleMessage)`
+   * @param sid 接收消息用户的 `socket.id`
+   * @param client 与客户端连接的 `Socket` 实例
+   * @returns
+   */
+  @SubscribeMessage('send-message')
+  handleSendMessage(
+    @MessageBody() { sid, message }: { sid: string; message: string },
+    @ConnectedSocket() client: ClientSocket,
+  ) {
+    const username = client.data.username;
+
+    const response = { username, message, sid: client.id };
+
+    // 将消息发送给 sid 对应的用户
+    client.to(sid).emit('receive-message', JSON.stringify(response));
 
     return JSON.stringify(response);
   }
