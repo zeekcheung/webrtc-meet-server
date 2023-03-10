@@ -29,9 +29,14 @@ async function bootstrap() {
   // 获取环境变量
   const configService = app.get(ConfigService);
   const port = configService.get('PORT') || 3000;
+  const redisHost = configService.get('REDIS_HOST') || '127.0.0.1';
+  const redisPort = configService.get('REDIS_PORT') || 6379;
 
   // 连接 Redis
-  const redisClient = createClient({ legacyMode: true });
+  const redisClient = createClient({
+    legacyMode: true,
+    url: `redis://${redisHost}:${redisPort}`,
+  });
   redisClient.connect().catch(console.error);
 
   // 注册 allowPrivateNetworkMiddleware 中间件

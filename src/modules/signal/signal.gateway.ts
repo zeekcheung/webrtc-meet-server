@@ -53,15 +53,6 @@ export class SignalGateway {
   }
 
   /**
-   * 将`Set<string>`类型的`room`序列化为字符串形式的`Array<string>`
-   * @param room 待序列化的房间
-   * @returns 经过序列化的房间
-   */
-  private serializeRoom(room: Set<string>): string {
-    return JSON.stringify(Array.from(room));
-  }
-
-  /**
    * 获取 `roomName` 房间内的所有 `Socket` 实例
    * @param roomName 房间名
    * @returns `roomName` 房间内的所有 `Socket` 实例
@@ -91,15 +82,19 @@ export class SignalGateway {
    * @returns 经过序列化的房间
    */
   @SubscribeMessage('create-room')
-  handleCreateRoom(
+  async handleCreateRoom(
     @MessageBody() roomName: string,
     @ConnectedSocket() client: ClientSocket,
-  ): string {
+  ): Promise<string> {
     // 加入一个不存在的房间时，会自动创建新的房间
     client.join(roomName);
     // 返回新建的房间
-    const room = this.getRoomByName(roomName);
-    return this.serializeRoom(room);
+    const sockets = await this.getSocketsByRoomName(roomName);
+    const userList = sockets.map(() => ({
+      sid: client.id,
+      username: client.data.username,
+    }));
+    return JSON.stringify(userList);
   }
 
   /**
@@ -260,7 +255,7 @@ export class SignalGateway {
    * @param client 与客户端连接的 `Socket` 实例
    * @returns
    */
-  @SubscribeMessage('send-message')
+  @SubscribeMessage('broadcast-message')
   handleBroadcastMessage(
     @MessageBody() { roomName, message }: { roomName: string; message: string },
     @ConnectedSocket() client: ClientSocket,
@@ -270,7 +265,7 @@ export class SignalGateway {
     const response = { username, message };
 
     // 将消息广播给房间内其他用户
-    client.to(roomName).emit('receive-message', JSON.stringify(response));
+    this.server.to(roomName).emit('receive-message', JSON.stringify(response));
 
     return JSON.stringify(response);
   }
