@@ -1,4 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { cwd } from 'process';
 import { USER_BASE_URL } from 'src/common/constant';
 import DbConfigModule from 'src/config/db';
 import EnvConfigModule from 'src/config/env';
@@ -18,6 +21,14 @@ import { AppService } from './app.service';
     UsersModule,
     MeetingModule,
     SignalModule,
+    // 集合前端
+    ServeStaticModule.forRoot({
+      rootPath: join(cwd(), 'public'),
+      serveStaticOptions: {
+        // 配置强缓存
+        maxAge: 2592000,
+      },
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],
